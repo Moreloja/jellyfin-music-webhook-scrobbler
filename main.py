@@ -6,47 +6,65 @@ client = pymongo.MongoClient('mongodb://localhost:27017/')
 db = client['webhooks']
 collection = db['jellyfin-music']
 
+
+# Convert playback position string to seconds
+def get_playback_position_seconds(doc):
+    playback_position_parts = doc['PlaybackPosition'].split(':')
+    playback_position_seconds = (
+        int(playback_position_parts[0]) * 3600 +
+        int(playback_position_parts[1]) * 60 +
+        int(playback_position_parts[2])
+    )
+    return playback_position_seconds
+
+
+def create_playback_info(doc):
+    song_name = doc['Name']
+    artist_name = doc['Artist']
+    album_name = doc['Album']
+    timestamp = datetime.fromisoformat(doc['UtcTimestamp'])
+    playback_position_seconds = get_playback_position_seconds(doc)
+
+    playback_info = {
+        'timestamp': timestamp,
+        'song_name': song_name,
+        'artist_name': artist_name,
+        'album_name': album_name,
+        'playback_position_seconds': playback_position_seconds
+    }
+
+    return playback_info
+
+
 def get_song_playback_info():
+    final_playback_info_list = []
     playback_info_list = []
 
     # Retrieve all documents from the collection
     documents = collection.find()
 
-    last_playback_position_seconds = 0
-    last_provider_musicbrainztrack = None
+    previous_doc = None
+    first_playback_info = None
     for doc in documents:
         if doc['NotificationType'] == 'PlaybackProgress' and not doc['IsPaused']:
-            provider_musicbrainztrack = doc['Provider_musicbrainztrack']
-            timestamp_str = doc['UtcTimestamp']
-            song_name = doc['Name']
-            artist_name = doc['Artist']
-            album_name = doc['Album']
-            playback_position_str = doc['PlaybackPosition']
 
-            # Convert timestamp string to datetime object
-            timestamp = datetime.fromisoformat(timestamp_str)
+            if previous_doc is None:
+                first_playback_info = create_playback_info(doc)
+                previous_doc = doc
+                continue
 
-            # Convert playback position string to seconds
-            playback_position_parts = playback_position_str.split(':')
-            playback_position_seconds = (
-                int(playback_position_parts[0]) * 3600 +
-                int(playback_position_parts[1]) * 60 +
-                int(playback_position_parts[2])
-            )
-
-            if last_playback_position_seconds > playback_position_seconds or last_provider_musicbrainztrack != provider_musicbrainztrack:
-                last_playback_position_seconds = playback_position_seconds
-                last_provider_musicbrainztrack = provider_musicbrainztrack
-
-                playback_info = {
-                    'timestamp': timestamp,
-                    'song_name': song_name,
-                    'artist_name': artist_name,
-                    'album_name': album_name,
-                    'playback_position_seconds': playback_position_seconds
-                }
-
-                playback_info_list.append(playback_info)
+            if ((get_playback_position_seconds(previous_doc) > get_playback_position_seconds(doc)
+                # Don't trigger if previous is exactly 1 second ahead...
+                # ...this can happen in regular playback
+                and not get_playback_position_seconds(previous_doc) - get_playback_position_seconds(doc) == 1)
+                or previous_doc['Provider_musicbrainztrack'] != doc['Provider_musicbrainztrack']):
+                
+                last_playback_info = create_playback_info(previous_doc)
+                playback_info_list.append(first_playback_info)
+                playback_info_list.append(last_playback_info)
+                first_playback_info = create_playback_info(doc)
+            
+            previous_doc = doc
 
     return playback_info_list
 
