@@ -70,11 +70,20 @@ def save_playback_info(playback_info):
         {"$set": playback_info},
         upsert=True,
     )
-    # playback_info_collection.insert_one(playback_info)
+
+
+def delete_paused_raw_data():
+    collection.delete_many({"IsPaused": True})
 
 
 def get_song_playback_info():
     return playback_info_collection.find()
+
+
+def print_playback_info(playback_info):
+    print(
+        f"Timestamp: {playback_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} - {playback_info['timestamp_end'].strftime('%H:%M:%S')} - {playback_info['Artist']} - {playback_info['Album']} - {playback_info['Name']}, {playback_info['playback_position_seconds']} seconds of {playback_info['run_time']}"
+    )
 
 
 def raw_data_to_playback_info() -> None:
@@ -105,9 +114,14 @@ def raw_data_to_playback_info() -> None:
                 ) or previous_doc["Provider_musicbrainztrack"] != doc[
                     "Provider_musicbrainztrack"
                 ]:
-                    save_playback_info(create_playback_info(first_doc, previous_doc))
+                    playback_info = create_playback_info(first_doc, previous_doc)
+                    save_playback_info(playback_info)
+                    print_playback_info(playback_info)
+
                     # Delete raw data for this song
-                    ids_to_delete = [doc_to_delete["_id"] for doc_to_delete in docs_to_delete]
+                    ids_to_delete = [
+                        doc_to_delete["_id"] for doc_to_delete in docs_to_delete
+                    ]
                     # Use delete_many() to delete all matching documents in one operation
                     collection.delete_many({"_id": {"$in": ids_to_delete}})
 
@@ -118,9 +132,8 @@ def raw_data_to_playback_info() -> None:
 
 
 if __name__ == "__main__":
+    delete_paused_raw_data()
     raw_data_to_playback_info()
-    playback_info_list = get_song_playback_info()
-    for playback_info in playback_info_list:
-        print(
-            f"Timestamp: {playback_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} - {playback_info['timestamp_end'].strftime('%H:%M:%S')}, Playing: {playback_info['Artist']} - {playback_info['Album']} - {playback_info['Name']}, {playback_info['playback_position_seconds']} seconds of {playback_info['run_time']}"
-        )
+    # playback_info_list = get_song_playback_info()
+    # for playback_info in playback_info_list:
+    #     print_playback_info(playback_info)
