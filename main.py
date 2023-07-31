@@ -5,6 +5,7 @@ from datetime import datetime
 client = pymongo.MongoClient('mongodb://localhost:27017/')
 db = client['webhooks']
 collection = db['jellyfin-music']
+playback_info_collection = db['playback-info']
 
 
 # Convert playback position string to seconds
@@ -29,23 +30,33 @@ def convert_string_to_seconds(string):
 def create_playback_info(first_doc, previous_doc):
     timestamp = datetime.fromisoformat(first_doc['UtcTimestamp'])
     timestamp_end = datetime.fromisoformat(previous_doc['UtcTimestamp'])
-    song_name = first_doc['Name']
-    artist_name = first_doc['Artist']
-    album_name = first_doc['Album']
     playback_position_seconds = get_playback_position_seconds(previous_doc)
     run_time = get_run_time_as_seconds(first_doc)
 
     playback_info = {
         'timestamp': timestamp,
         'timestamp_end': timestamp_end,
-        'song_name': song_name,
-        'artist_name': artist_name,
-        'album_name': album_name,
         'playback_position_seconds': playback_position_seconds,
-        'run_time': run_time
+        'run_time': run_time,
+        'ServerVersion': first_doc['ServerVersion'],
+        'Name': first_doc['Name'],
+        'Year': first_doc['Year'],
+        'Album': first_doc['Album'],
+        'Artist': first_doc['Artist'],
+        'Provider_musicbrainzalbumartist': first_doc['Provider_musicbrainzalbumartist'],
+        'Provider_musicbrainzartist': first_doc['Provider_musicbrainzartist'],
+        'Provider_musicbrainzalbum': first_doc['Provider_musicbrainzalbum'],
+        'Provider_musicbrainzreleasegroup': first_doc['Provider_musicbrainzreleasegroup'],
+        'Provider_musicbrainztrack': first_doc['Provider_musicbrainztrack'],
+        'DeviceId': first_doc['DeviceId'],
+        'UserId': first_doc['UserId'],
     }
 
     return playback_info
+
+
+def save_playback_info(playback_info):
+    playback_info_collection.insert_one(playback_info)
 
 
 def get_song_playback_info():
@@ -53,6 +64,8 @@ def get_song_playback_info():
 
     # Retrieve all documents from the collection
     documents = collection.find()
+
+    # TODO loop over every doc for each DeviceId: 'SmVsbHlmaW5NZWRpYVBsYXllciAxLjkuMSAobGludXgteDg2XzY0IHVua25vd24pfDE2ODU2MzEyMzkwNzM1',
 
     first_doc = None
     previous_doc = None
@@ -74,7 +87,9 @@ def get_song_playback_info():
                 ):
                 
                 # Method that takes first_doc and previous_doc to calculate how much of a song was played
+                # TODO i dont need the final list anymore. i can read from db playback-info
                 final_playback_info_list.append(create_playback_info(first_doc, previous_doc))
+                save_playback_info(create_playback_info(first_doc, previous_doc))
                 first_doc = doc
             
             previous_doc = doc
@@ -84,4 +99,4 @@ def get_song_playback_info():
 if __name__ == '__main__':
     playback_info_list = get_song_playback_info()
     for playback_info in playback_info_list:
-        print(f"Timestamp: {playback_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} - {playback_info['timestamp_end'].strftime('%H:%M:%S')}, Playing: {playback_info['artist_name']} - {playback_info['album_name']} - {playback_info['song_name']}, {playback_info['playback_position_seconds']} seconds of {playback_info['run_time']}")
+        print(f"Timestamp: {playback_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} - {playback_info['timestamp_end'].strftime('%H:%M:%S')}, Playing: {playback_info['Artist']} - {playback_info['Album']} - {playback_info['Name']}, {playback_info['playback_position_seconds']} seconds of {playback_info['run_time']}")
