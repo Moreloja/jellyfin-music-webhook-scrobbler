@@ -60,8 +60,10 @@ def save_playback_info(playback_info):
 
 
 def get_song_playback_info():
-    final_playback_info_list = []
+    return playback_info_collection.find()
 
+
+def raw_data_to_playback_info():
     # Retrieve all documents from the collection
     documents = collection.find()
 
@@ -86,17 +88,14 @@ def get_song_playback_info():
                 # or (doc['IsPaused'] and not previous_doc['IsPaused'])
                 ):
                 
-                # Method that takes first_doc and previous_doc to calculate how much of a song was played
-                # TODO i dont need the final list anymore. i can read from db playback-info
-                final_playback_info_list.append(create_playback_info(first_doc, previous_doc))
                 save_playback_info(create_playback_info(first_doc, previous_doc))
                 first_doc = doc
             
             previous_doc = doc
 
-    return final_playback_info_list
 
 if __name__ == '__main__':
+    raw_data_to_playback_info()
     playback_info_list = get_song_playback_info()
     for playback_info in playback_info_list:
         print(f"Timestamp: {playback_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')} - {playback_info['timestamp_end'].strftime('%H:%M:%S')}, Playing: {playback_info['Artist']} - {playback_info['Album']} - {playback_info['Name']}, {playback_info['playback_position_seconds']} seconds of {playback_info['run_time']}")
