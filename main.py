@@ -1,9 +1,20 @@
+import os
 import pymongo
 from datetime import datetime
 
+mongo_host = os.environ.get("MONGO_HOST")
+mongo_port = os.environ.get("MONGO_PORT")
+mongo_db = os.environ.get("MONGO_DB")
+mongo_user = os.environ.get("MONGO_USER")
+mongo_password = os.environ.get("MONGO_PASSWORD")
+
 # Connect to MongoDB
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["webhooks"]
+if mongo_user and mongo_password:
+    client = pymongo.MongoClient(f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}")
+else:
+    client = pymongo.MongoClient(f"mongodb://{mongo_host}:{mongo_port}")
+
+db = client[mongo_db]
 collection = db["jellyfin-music"]
 playback_info_collection = db["playback-info"]
 
