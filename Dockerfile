@@ -11,10 +11,10 @@ RUN pip install -r requirements.txt
 
 COPY main.py /app/main.py
 
-ENV MONGO_HOST=mongodb
-ENV MONGO_PORT=27017
-ENV MONGO_DB=webhooks
-ENV MONGO_USER=
-ENV MONGO_PASSWORD=
+ENV MONGO_HOST=mongodb \
+    MONGO_PORT=27017 \
+    MONGO_DB_NAME=moreloja \
+    MONGO_USER= \
+    MONGO_PASSWORD=
 
 CMD ["crond", "-f"]

@@ -4,7 +4,7 @@ from datetime import datetime
 
 mongo_host = os.environ.get("MONGO_HOST")
 mongo_port = os.environ.get("MONGO_PORT")
-mongo_db = os.environ.get("MONGO_DB")
+mongo_db = os.environ.get("MONGO_DB_NAME")
 mongo_user = os.environ.get("MONGO_USER")
 mongo_password = os.environ.get("MONGO_PASSWORD")
 
